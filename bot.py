@@ -1,12 +1,16 @@
 import os
 import telebot
-import anthropic
+from openai import OpenAI
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
+
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=OPENROUTER_API_KEY,
+)
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
-client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
 SYSTEM_PROMPT = """Siz DokonAI — o'zbek tilidagi online do'kon uchun AI yordamchisiz.
 Do'kon haqida:
@@ -25,12 +29,13 @@ def start(message):
 
 @bot.message_handler(func=lambda m: True)
 def handle(message):
-    response = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=500,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": message.text}]
+    response = client.chat.completions.create(
+        model="meta-llama/llama-3.1-8b-instruct:free",
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": message.text}
+        ]
     )
-    bot.reply_to(message, response.content[0].text)
+    bot.reply_to(message, response.choices[0].message.content)
 
 bot.polling()
